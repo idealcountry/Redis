@@ -1,6 +1,8 @@
 package com.spacetim.config;
 
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,5 +21,12 @@ public class RabbitmqConfig {
     @Bean
     public Queue queue(){
         return new Queue("Queue1");
+    }
+
+    public SimpleMessageListenerContainer simpleMessageListenerContainer(){
+        return null;
+    }
+    public SimpleRabbitListenerContainerFactory simpleRabbitListenerContainerFactory(){
+        return  null;
     }
 }
