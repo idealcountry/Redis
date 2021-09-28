@@ -75,27 +75,31 @@ OpenFeign使用步骤：
 
 2.在主启动类上声明@EnableFeignClient
 
-![image-20210928150406423](image-20210928150406423.png)
-
-![image-20210928150651398](image-20210928150651398.png)
+![image-20210928212904441](image-20210928212904441.png)
 
 
 
-
-
-1.Feign客户端超时时间：默认等待一秒钟
-
-2.依赖关系
+#### 1.依赖关系
 
 ![image-20210928100402775](image-20210928100402775-16327946488861.png)
 
 
 
-3.@configuration
+
+
+#### 2.Feign客户端超时时间：默认等待一秒钟，超时会异常报错
+
+![image-20210928215011310](image-20210928215011310.png)
+
+
+
+
+
+#### 3.@configuration
 
 #### 4.OpenFeign拦截器
 
-##### 1.实现RequestInterceptor接口，重写apply方法
+##### 4.1 实现RequestInterceptor接口，重写apply方法
 
 ![image-20210928143215835](image-20210928143215835.png)
 
