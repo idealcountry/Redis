@@ -330,7 +330,7 @@ spring.cloud.loadbalancer.retry.enabled默认值为true（Ribbon默认情况下�
 
 > Zuul是一个API网关，通过网关提供的一系列不同类型的过滤器使得系统维护人员能够快速灵活地过滤服务、限制流量、实现服务器的负载均衡，避免外部请求冲垮微服务系统（与断路器不同，断路器主要是内部服务调用不是外部请求）
 
-#### 5.1 入门步骤
+#### 5.1 使用步骤
 
 1. 驱动Zuul，在主启动类上加入@EnableZuulProxy注解
 
@@ -372,10 +372,6 @@ spring.cloud.loadbalancer.retry.enabled默认值为true（Ribbon默认情况下�
 
 ![](过滤器.png)
 
-
-
-
-
 > ==pre==：在路由到源服务器前执行的逻辑，如鉴权、选择具体的源服务节点等
 >
 > ==route==：执行路由到源服务器的逻辑
@@ -387,6 +383,109 @@ spring.cloud.loadbalancer.retry.enabled默认值为true（Ribbon默认情况下�
 
 
 
+
+> 正常流程：
+>
+> 请求到达首先会经过pre类型过滤器，而后到达route类型，进行路由，请求就到达真正的服务提供者，执行请求，返回结果后，会到达post过滤器。而后返回响应。
+>    异常流程：
+>
+> - 整个过程中，pre或者route过滤器出现异常，都会直接进入error过滤器，在error处理完毕后，会将请求交给POST过滤器，最后返回给用户。
+> - 如果是error过滤器自己出现异常，最终也会进入POST过滤器，将最终结果返回给请求客户端。
+> - 如果是POST过滤器出现异常，会跳转到error过滤器，但是与pre和route不同的是，请求不会再到达POST过滤器了。
+
+
+
+
+
+### 6.Gateway
+
+
+
+> 匹配方式就叫断言，实现这个匹配方式就叫filter，对外表现出来就是路由的功能。对同一件事情，三个维度不同维度的描述。
+
+#### 6.1 通过yml配置Gateway
+
+```yaml
+server:
+  port: 9527
+
+spring:
+  application:
+    name: cloud-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true # 开启从注册中心动态创建路由的功能，利用微服务名称进行路由
+      routes:
+        - id: payment_route # 路由的id,没有规定规则但要求唯一,建议配合服务名
+          #匹配后提供服务的路由地址
+          #          uri: http://localhost:8001
+          uri: lb://cloud-payment-service #lb代表从注册中心获取服务
+          predicates:
+            - Path=/payment/get/** # 断言，路径相匹配的进行路由
+              # 时区通过ZonedDateTime.now()生成
+              #  2021-09-19T22:32:17.292+08:00[Asia/Shanghai]
+              #- After=2021-09-19T22:32:17.292+08:00[Asia/Shanghai]
+              #- Before=2021-09-19T22:32:17.292+08:00[Asia/Shanghai]
+              #- Cookie=username,zzyy
+              #- Header=X-Request-Id, \d+ #请求头要有X-Request-Id属性，并且值为正数
+              #- Host=**.space.com
+              #- Method=GET
+              #- Query=username, \d+ # 要有参数名username并且值还要是正整数才能路由
+              # 过滤
+              #filters:
+            #  - AddRequestHeader=X-Request-red, blue
+        - id: payment_route2
+          #          uri: http://localhost:8001
+          uri: lb://cloud-payment-service
+          predicates:
+            Path=/payment/lb/** #断言,路径相匹配的进行路由
+
+eureka:
+  instance:
+    hostname: cloud-gateway-service
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: http://eureka7001.com:7001/eureka/
+```
+
+#### 6.2 通过定义全局自定义过滤器配置Gateway
+
+```java
+@Component
+@Slf4j
+public class MyLogGatewayFilter implements GlobalFilter, Ordered {
+
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        log.info("come in global filter: {}", new Date());
+
+        ServerHttpRequest request = exchange.getRequest();
+        String uname = request.getQueryParams().getFirst("uname");
+        if (uname == null) {
+            log.info("用户名为null，非法用户");
+            exchange.getResponse().setStatusCode(HttpStatus.NOT_ACCEPTABLE);
+            return exchange.getResponse().setComplete();
+        }
+        // 放行
+        return chain.filter(exchange);
+    }
+
+    /**
+     * 过滤器加载的顺序 越小,优先级别越高
+     *
+     * @return
+     */
+    @Override
+    public int getOrder() {
+        return 0;
+    }
+}
+
+```
 
 
 
