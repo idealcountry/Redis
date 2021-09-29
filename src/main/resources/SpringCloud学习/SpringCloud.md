@@ -67,7 +67,9 @@ Region和zone
 
 
 
-### 2.Openfeign
+### 2.OpenFeign
+
+> OpenFeign是一种声明式调用，按照一定的规则描述接口就能够帮助我们完成REST风格的调用，减少代码的编写量，提高代码可读性。规则中完全采用了Spring MVC的风格实现服务调用的功能。
 
 OpenFeign使用步骤：
 
@@ -79,7 +81,33 @@ OpenFeign使用步骤：
 
 
 
-#### 1.依赖关系
+#### 1.Feign客户端超时时间：默认等待一秒钟，超时会异常报错
+
+```yaml
+# Ribbon配置
+ribbon:
+  # 连接服务器超时时间（单位毫秒）
+  connectTimeout: 3000
+  # 调用超时时间（单位毫秒）
+  readTimeout: 6000
+
+# Hystrix配置
+hystrix:
+  command:
+    default:
+      execution:
+        timeout:
+          # 是否启用Hystrix超时时间
+          enable: true
+        isolation:
+          thread:
+            # 配置Hystrix断路器超时时间（单位毫秒）
+            timeoutInMilliseconds: 5000
+```
+
+> 配置Ribbon超时原因：底层使用ribbon进行服务间调用
+
+
 
 ![image-20210928100402775](image-20210928100402775-16327946488861.png)
 
@@ -87,23 +115,51 @@ OpenFeign使用步骤：
 
 
 
-#### 2.Feign客户端超时时间：默认等待一秒钟，超时会异常报错
-
-![image-20210928215011310](image-20210928215011310.png)
+#### 2.配置OpenFeign
 
 
 
+##### 2.1 OpenFeign拦截器
 
-
-#### 3.@configuration
-
-#### 4.OpenFeign拦截器
-
-##### 4.1 实现RequestInterceptor接口，重写apply方法
+###### 实现RequestInterceptor接口，重写apply方法
 
 ![image-20210928143215835](image-20210928143215835.png)
 
+> 全局配置，拦截器UserInterceptor可以对OpenFeign客户端接口的所有请求进行拦截，request-interceptors可以配置多个拦截
+
 ![image-20210928143247147](image-20210928143247147-16328107698819.png)
+
+##### 2.2 使用配置类组装OpenFeign组件
+
+```java
+@Configuration
+public class FeignConfig {
+    /**
+     *  创建拦截器
+     * @return 拦截器
+     */
+    @Bean
+    public RequestInterceptor userInterceptor() {
+        return new RequestInterceptor() {
+            @Override
+            public void apply(RequestTemplate requestTemplate) {
+                requestTemplate.header("id",1);
+            }
+        };
+    }
+
+    /**
+     * FeignClient日志级别配置
+     *
+     * @return 日志级别
+     */
+    @Bean
+    public Logger.Level feignLoggerLevel() {
+        // 请求和响应的头信息,请求和响应的正文及元数据
+        return Logger.Level.FULL;
+    }
+}
+```
 
 
 
@@ -177,7 +233,21 @@ spring.cloud.loadbalancer.retry.enabled默认值为true（Ribbon默认情况下�
 
 ### 4.Hystrix
 
+> Hystrix是一种断路器组件，用来保护微服务系统在一些糟糕的情况下尽量保证可用性，保护微服务的运行
 
+为什么需要Hystrix？
+
+> 当正常访问接口时，在同一时间请求少的情况下可以瞬间响应，但在高并发情况下则会产生延迟的现象，特别是在使用Ribbon进行不同微服务间调用的时候出现读取延时错误，导致服务器返回超时错误页面
+
+
+
+1. 使用Jmeter在并发量20000下进行对payment服务接口的调用测试
+
+   ![image-20210929102240606](image-20210929102240606-16328821627071.png)
+
+2. 此时如果进行跨服务调用，则会出现ribbon读取超时的错误（ribbon读取超时时间设置为5s，默认为1s）
+
+   ![image-20210929103119743](image-20210929103119743.png)
 
 
 
@@ -191,64 +261,138 @@ spring.cloud.loadbalancer.retry.enabled默认值为true（Ribbon默认情况下�
 
 
 ```java
-@Service
-public class UserFacadeImpl implements UserFacade {
-    // 注入RestTemplate，在Ribbon中我们标注了@LoadBalance，用以实现负载均衡
-    @Autowired
-    private RestTemplate restTemplate = null;
-
-    @Override
-    // @HystrixCommand将方法推给Hystrix进行监控
-    // 配置项fallbackMethod指定了降级服务的方法
-    @HystrixCommand(fallbackMethod = "fallback1")
-    public ResultMessage timeout() {
-        String url = "http://USER/hystrix/timeout";
-        return restTemplate.getForObject(url, ResultMessage.class);
+@HystrixCommand(fallbackMethod = "paymentInfo_TimeOutHandler", commandProperties = {
+            @HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "3000")
+    })
+    public String paymentInfo_TimeOut(Integer id) {
+        int timeNumber = 5;
+//        int age = 10 / 0; 模拟系统运行异常
+        try {
+            TimeUnit.SECONDS.sleep(timeNumber);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "线程池：" + Thread.currentThread().getName() + "paymentinfo_Timeout,id:" + id + "\t" + "耗时(秒)" + timeNumber;
     }
 
-    @Override
-    @HystrixCommand(fallbackMethod = "fallback2")
-    public ResultMessage exp(String msg) {
-        String url = "http://USER/hystrix/exp/{msg}";
-        return restTemplate.getForObject(url, ResultMessage.class, msg);
-    }
-
-    // 降级方法1
-    public ResultMessage fallback1() {
-        return new ResultMessage(false, "超时了");
-    }
-
-    /**
-     * 降级方法2，带有参数
-     * @Param msg -- 消息
-     * @Return ResultMessage -- 结果消息
-     **/
-    public ResultMessage fallback2(String msg) {
-        return new ResultMessage(false, "调用产生异常了，参数:" + msg);
+    private String paymentInfo_TimeOutHandler(Integer id) {
+        return "线程池：" + Thread.currentThread().getName() + "8001系统繁忙或者运行报错,请稍后再试,id:" + id + "\t";
     }
 ```
 
 
 
+![image-20210929104636839](image-20210929104636839.png)
+
+#### 4.2 配置降级方法
+
+1.在类中编写降级方法
+
+![image-20210929113728577](image-20210929113728577.png)
 
 
 
+2. 在@FeignClient中指定进行降级处理类的属性（同时在yml文件中配置feign.hystrix.enable为true）
+
+   ```java
+   @FeignClient(value = "CLOUD-PROVIDER-HYSTRIX-PAYMENT",fallback = PaymentFallbackService.class)
+   ```
 
 
 
+#### 4.3 断路器
+
+```java
+ @HystrixCommand(
+            fallbackMethod = "paymentCircuitBreaker_fallback", commandProperties = {
+            @HystrixProperty(name = "circuitBreaker.enabled", value = "true"),// 是否开启断路器
+            @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold", value = "10"),// 请求次数
+            @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds", value = "10000"),// 时间窗口期/时间范文
+            @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage", value = "60")// 失败率达到多少后跳闸
+})
+```
+
+#### 4.4 Hystrix工作原理
+
+![](hystrix-command-flow-chart.png)
 
 
 
+#### 4.5 断路器工作原理
 
+![](circuit-breaker-640.png)
 
+#### 4.6 Hystrix监控
 
-
-
-
-
-
+![image-20210929152326697](image-20210929152326697.png)
 
 ### 5.Zuul
+
+> Zuul是一个API网关，通过网关提供的一系列不同类型的过滤器使得系统维护人员能够快速灵活地过滤服务、限制流量、实现服务器的负载均衡，避免外部请求冲垮微服务系统（与断路器不同，断路器主要是内部服务调用不是外部请求）
+
+#### 5.1 入门步骤
+
+1. 驱动Zuul，在主启动类上加入@EnableZuulProxy注解
+
+2. 在yml文件中添加zuul配置
+
+   ```yaml
+   # Zuul的配置
+   zuul:
+     # 路由配置
+     routes:
+       # 对应用户微服务
+       user-service: # ⑧
+         # 请求拦截路径配置（使用ANT风格）
+         path: /u/**
+         # 通过一个URL配置，实际映射的地址
+         url: http://localhost:6001/
+         # 通过服务名称配置
+         service-id: user
+       # 产品微服务配置
+       fund-service:
+         # 请求拦截路径配置（使用ANT风格）
+         path: /p/**
+         service-id: product
+   ```
+
+   例如通过访问==localhost:1001/u/user/info/1==，就会被映射为：==localhost:6001/u/user/info/1==
+
+   > ANT风格主要使用3个常见的通用字符
+   >
+   > - "*":匹配一个层级
+   > - "**":匹配任意层级
+   > - "?":匹配单个字符（/p/? == /p/1）
+
+3. f
+
+4. f
+
+#### 5.2 过滤器原理
+
+![](过滤器.png)
+
+
+
+
+
+> ==pre==：在路由到源服务器前执行的逻辑，如鉴权、选择具体的源服务节点等
+>
+> ==route==：执行路由到源服务器的逻辑
+>
+> ==post==：在路由到源服务器后执行的过滤器
+>
+> ==error==：当在整个路由源服务器的执行过程中发生异常时，则进入此类过滤器，可以做全局的响应处理错误的逻辑
+
+
+
+
+
+
+
+
+
+
 
 
 
