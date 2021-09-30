@@ -21,6 +21,33 @@ CREATE TABLE `payment`
 
 ### 1.Eureka
 
+Eureka注册中心的搭建
+
+> 1. 导入依赖
+>
+>    ```xml
+>    <dependency>
+>    	<groupId>org.springframework.cloud</groupId>
+>    	<artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+>    </dependency>
+>    ```
+>
+> 2. 在主启动类上开启Eureka服务
+>
+>    ```java
+>    //驱动Eureka 服务治理中心 
+>    @EnableEurekaServer
+>    public class EurekaServerApplication {
+>        public static void main(String[] args) {
+>            SpringApplication.run(EurekaServerApplication.class, args);
+>        }
+>    }
+>    ```
+>
+> 3. f
+>
+> 4. 
+
 
 
 #### 1.1 注册
@@ -387,13 +414,27 @@ spring.cloud.loadbalancer.retry.enabled默认值为true（Ribbon默认情况下�
 > 正常流程：
 >
 > 请求到达首先会经过pre类型过滤器，而后到达route类型，进行路由，请求就到达真正的服务提供者，执行请求，返回结果后，会到达post过滤器。而后返回响应。
->    异常流程：
+>
+> 异常流程：
 >
 > - 整个过程中，pre或者route过滤器出现异常，都会直接进入error过滤器，在error处理完毕后，会将请求交给POST过滤器，最后返回给用户。
 > - 如果是error过滤器自己出现异常，最终也会进入POST过滤器，将最终结果返回给请求客户端。
 > - 如果是POST过滤器出现异常，会跳转到error过滤器，但是与pre和route不同的是，请求不会再到达POST过滤器了。
 
+#### 5.3 自定义过滤器
 
+自定义过滤器需要继承ZuulFilter并且实现下图所示的四个抽象方法
+
+<img src="image-20210930104847153.png" alt="image-20210930104847153" style="zoom: 50%;" />
+
+
+
+
+
+> - shouldFilter: 是否执行过滤器逻辑
+> - run：过滤器的具体逻辑，是过滤器的核心方法，返回一个Object对象，如果为null，表示继续后续的正常逻辑
+> - filterType：过滤器类型，主要有四种："pre","route","post"和"error"
+> - filterOrder：设置过滤器的顺序
 
 
 
