@@ -1,13 +1,67 @@
 ## SpringCloud
 
+### `分布式系统简介`
+
+> ​	在大数据、高并发和快响应的要求下，原来的单机系统已经不可能满足现今的互联网了。因此网站系统已经从单机系统发展为多台机器协作的系统，这种多台机器相互协作完成企业业务功能的系统就称为分布式系统
+
+![image-20211008134356836](image-20211008134356836.png)
+
+### 分布式系统的切分方式
+
+![image-20211008134940928](image-20211008134940928.png)
+
+**综合水平切分和垂直切分的优点，进一步切分便成为了混合切分**
+
+![image-20211008135000670](image-20211008135000670.png)
+
+`但同时也还是出现了当大量的交互产生时数据如何保证一致的问题，因此不管如何切分都无法解决所有问题`
+
+### CAP原则
+
+​	**根据分布式系统的复杂性，专家和学者们提出了CAP原则来概括分布式系统的特点**
+
+![image-20211008135227935](image-20211008135227935.png)
+
+> - CA：无法保证可扩展性
+> - CP：无法提高性能
+> - AP：无法保证数据一致性
+>
+> **总的来说，任何的分布式系统都只能较好地完成其中的两个指标，无法完成3个指标**
+
+**为什么不能满足同时**`CAP`？
+
+​	例如存在一个AP的微服务系统，为了满足可用性及分区容忍性，我们的数据获取最终是不一致的。
+
+![image-20211008135823871](image-20211008135823871.png)
+
+> 1. 当前满足CA，能否也满足P？假设当前分布式系统满足CA，C要求各个客户端读到的数据必须是一致的，考虑发生网络分区的情况，这个时候各个服务器存在数据不一致，那么根据C一致性要求，系统是不可以对外提供服务的（因为不同的客户端访问同一份数据会得到不同的结果），那么也就违背了分区容错性P。
+>
+> 2. 当前满足CP，能否也满足A？假设当前分布式系统满足CP， 在网络发生分区的情况下，为达到C一致性, 请求只能一直等待，等待网络分区情况解除，系统数据同步完成才能返回，这就无法满足可用性A。
+>
+> 3. 当前满足AP，能否也满足C？假设当前分布式系统满足AP, 系统要求在一定的时间内就要返回，在发生网络分区的情况下，为了保证P，即使出现网络分区也要正常提供服务，按时返回数据，可这样不同客户端访问同一份数据会得到不同的结果，这就不能保证数据的一致性C。
+
+
+
+​	**在当今互联网中最重要的是保持可用性，其次是性能，因此在微服务中，我们主要追求AP，轻C**
+
+### 业务场景
+
+![image-20211008140533922](image-20211008140533922.png)
+
 ### 1.Eureka
 
 > Eureka是SpringCloud的核心组件————服务治理中心，是微服务架构中最基础和最核心的功能组件，主要对各个服务实例进行管理，包括服务注册和服务发现等。
 >
 
+![image-20211008140616174](image-20211008140616174.png)
+
+
+
+![image-20211008140703693](image-20211008140703693.png)
+
 #### 使用开启Eureka：
 
-添加依赖后在主启动类上加入@EnableEurekaServer的注解并在配置文件设置对应的参数即可
+添加依赖后在主启动类上加入@EnableEurekaServer的注解并在配置文件设置对应的参数
 
 #### 1.1 注册
 
@@ -85,9 +139,9 @@ client:
 
 Eureka是一个强调AP（可用性和分区容忍）的组件。通过各种REST风格的请求来监控各个微服务及其他Eureka服务器是否可用，不可用的时候便会剔除它们。如果某个微服务实例发生异常不能使用了，那么Eureka服务器则会通过服务续约机制剔除掉，不再让新的请求路由到这个可能不可用的实例上，从而保证请求能在正常的实例得到处理。
 
-> 服务注册在启动Eureka客户端的时候并不会马上注册到Eureka服务器上，默认情况需要等40秒后才会发送REST风格请求到Eureka服务器请求注册，不成功则会每30秒尝试注册一次
+> 服务注册在启动Eureka客户端的时候并不会马上注册到Eureka服务器上，默认情况需要等`40`秒后才会发送REST风格请求到Eureka服务器请求注册，不成功则会每`30`秒尝试注册一次
 >
-> 服务发现在默认的情况下30秒维护一次客户端自己的缓存清单
+> 服务发现在默认的情况下`30`秒维护一次客户端自己的缓存清单
 
 
 
@@ -145,17 +199,11 @@ hystrix:
 
 > 配置Ribbon超时原因：底层使用ribbon进行服务间调用
 
-
-
 ![image-20210928100402775](image-20210928100402775-16327946488861.png)
 
 
 
-
-
 #### 2.配置OpenFeign
-
-
 
 ##### 2.1 OpenFeign拦截器
 
@@ -228,10 +276,6 @@ public class FeignConfig {
 }
 ```
 
-
-
-
-
 ### 3.Ribbon
 
 > Ribbon是一种客户端负载均衡的组件，主要用于在微服务存在多个实例情况下，进行服务调用的时候需要选取具体的一个实例进行调用，即通过具体的负载均衡算法来实现具体的调用。
@@ -268,13 +312,13 @@ public CommonResult<Payment> getPaymentById(@PathVariable("id") Long id) {
 
 ![image-20210928162207422](image-20210928162207422-163281732994212.png)
 
-> **RoundRobinRule** 轮询
-> 	**RandomRule** 随机
-> 	**AvailabilityFilteringRule** 会先过滤掉由于多次访问故障而处于断路器跳闸状态的服务，还有并发	的连接数超过阈值的服务，然后对剩余的服务列表进行轮询
-> 	**WeightedResponseTimeRule** 权重 根据平均响应时间计算所有服务的权重，响应时间越快服务权重越	大被选中的概率越高。刚启动时，如果统计信息不足，则使用轮询策略，等信息足够，切换到 	****
-> 	**RetryRule** 重试 先按照轮询策略获取服务，如果获取失败则在指定时间内重试，获取可用服务
-> 	**BestAvailableRule** 选过滤掉多次访问故障而处于断路器跳闸状态的服务，然后选择一个并发量最小的服务
-> 	**ZoneAvoidanceRule** 符合判断server所在区域的性能和server的可用性选择服务（默认的选择策略，在存在Zone概念且Zone数量大于1的时候，会先过滤掉负载大的或者有故障的服务）
+> ​    **RoundRobinRule** 轮询
+> ​	**RandomRule** 随机
+> ​	**AvailabilityFilteringRule** 会先过滤掉由于多次访问故障而处于断路器跳闸状态的服务，还有并发的连接数超过阈值的服务，然后对剩余的服务列表进行轮询
+> ​	**WeightedResponseTimeRule** 权重 根据平均响应时间计算所有服务的权重，响应时间越快服务权重越大则被选中的概率越高。刚启动时，如果统计信息不足，则使用轮询策略，等信息足够后进行切换
+> ​	**RetryRule** 重试 先按照轮询策略获取服务，如果获取失败则在指定时间内重试，获取可用服务
+> ​	**BestAvailableRule** 选过滤掉多次访问故障而处于断路器跳闸状态的服务，然后选择一个并发量最小的服务
+> ​	**ZoneAvoidanceRule** 符合判断server所在区域的性能和server的可用性选择服务（默认的选择策略，在存在Zone概念且Zone数量大于1的时候，会先过滤掉负载大的或者有故障的服务）
 
 #### 3.5 使用自定义的负载均衡算法
 
@@ -314,11 +358,11 @@ spring.cloud.loadbalancer.retry.enabled默认值为true（Ribbon默认情况下�
 
 ![image-20210928170445501](image-20210928170445501.png)![image-20210928170935964](image-20210928170935964.png)
 
-通过使用饥渴加载Ribbon
+
 
 第一次Http请求的时候需要初始化Ribbon和发送Http请求，因此会出现耗时比较长的情况。使得第一次服务调用出现超时
 
-
+我们可以通过使用饥渴加载Ribbon
 
 ### 4.Hystrix
 
@@ -373,7 +417,7 @@ spring.cloud.loadbalancer.retry.enabled默认值为true（Ribbon默认情况下�
 
 ![image-20210929104636839](image-20210929104636839.png)
 
-#### 4.2 配置降级方法
+#### 4.2 类中配置降级方法
 
 1.在类中编写降级方法
 
@@ -389,7 +433,7 @@ spring.cloud.loadbalancer.retry.enabled默认值为true（Ribbon默认情况下�
 
 
 
-#### 4.3 断路器
+#### 4.3 开启断路器
 
 ```java
  @HystrixCommand(
@@ -403,17 +447,63 @@ spring.cloud.loadbalancer.retry.enabled默认值为true（Ribbon默认情况下�
 
 #### 4.4 Hystrix工作原理
 
+> - execute：该方法是阻塞的，从依赖请求中接收单个响应
+> - queue：从依赖请求中返回一个包含单个响应的返回结果或异常类型的对象
+> - observe：订阅一个从依赖请求中返回的代表响应的对象（热观察者模式：只要订阅就会立刻传递消息）
+> - toObservable：返回一个Observable对象，只有订阅时才会执行命令并发射响应（冷观察者模式：订阅后还得再次发送命令才会传递消息）
+>
+> execute->queue->toObservable->Observable,最后由queue方法返回一个Future对象，这个对象包含最后返回的结果
+
 ![](hystrix-command-flow-chart.png)
 
+第三步缓存：
 
+> Hystrix提供的请求缓存，是基于单次请求的，非本次请求是无法读取请求缓存的。当一个请求通过服务调用访问获取数据后会将其缓存，在该请求再次通过同样服务调用获取数据时，就可以直接读取缓存了。
+
+缓存使用方法：
+
+在方法上添加==@CacheResult==注解进行缓存，通过配置项cacheKeyMethod指定缓存key的生成方法（默认为方法名）
+
+==@CacheRemove==：将请求结果删除，通过配置项commandKey指定命令键
+
+==@CacheKey==：用在参数上，标记缓存的键，如无则使用所有的参数。优先级低于cacheKeyMethod
 
 #### 4.5 断路器工作原理
 
-![](circuit-breaker-640.png)
+在Hystrix中，断路器存在3种状态。
+
+> - CLOSED：关闭
+> - OPEN：打开
+> - HALF_OPEN：半打开
+
+- CLOSED状态转换为OPEN状态：当发生错误的请求占比达到50%时，就会将断路器状态切换至OPEN
+- OPEN和HALF_OPEN的状态转换：当断路器打开超过一定时间（默认为5秒）的情况下就会进入HALF_OPEN状态，此时可以进行尝试请求，可能成功也可能失败，如果成功就设置为CLOSED，放行请求；如果不成功则继续设为OPEN进行阻断请求。
+
+​    判定是否开启断路器的算法是`时间窗算法`,即滑动窗口在一定时间内划过的数据，但在速度加快的情况下会增加统计的速度以至于消耗大量的资源
+
+​	Hystrix运用了桶的概念，桶是统计滑动窗口数据的最小单位。例如，如果时间窗单次统计10秒，可以把10秒拆分为10个1秒进行统计，每个1秒的度量数据都会放在一个桶中。时间窗的数据是最近10秒内的数据的分析。Hystrix默认配置中时间窗大小为10秒，里面存在10个桶，每个桶的大小为100。
+
+<img src="circuit-breaker-640.png"  />
 
 #### 4.6 Hystrix监控
 
-![image-20210929152326697](image-20210929152326697.png)
+> 实心圆：表示流量的大小，越大代表流量越大。从绿、黄、橙、红依次健康度降低
+>
+> 50.0%：最近10秒内的错误比例（包括超时、异常等）
+>
+> Host：服务器数量
+>
+> Cluster：集群流量
+>
+> ​	请求成功 		超时
+>
+> ​	断路、熔断	   线程池拒绝
+>
+> ​	坏请求 		  请求失败
+
+![image-20211008170345546](image-20211008170345546.png)
+
+
 
 ### 5.Zuul
 
@@ -453,12 +543,8 @@ spring.cloud.loadbalancer.retry.enabled默认值为true（Ribbon默认情况下�
    > - "**":匹配任意层级
    > - "?":匹配单个字符（/p/? == /p/1）
 
-3. 
-
 
 #### 5.2 过滤器原理
-
-![](过滤器.png)
 
 > ==pre==：在路由到源服务器前执行的逻辑，如鉴权、选择具体的源服务节点等
 >
@@ -468,7 +554,7 @@ spring.cloud.loadbalancer.retry.enabled默认值为true（Ribbon默认情况下�
 >
 > ==error==：当在整个路由源服务器的执行过程中发生异常时，则进入此类过滤器，可以做全局的响应处理错误的逻辑
 
-
+<img src="过滤器.png" style="zoom: 67%;" />
 
 正常流程：
 
@@ -561,9 +647,44 @@ public class ValidateCodeFilter extends ZuulFilter {
 
 ### 6.Gateway
 
+> Gateway基于==响应式==的一种网关，性能相较Zuul要高
 
+Zuul的执行方式
 
-#### 6.1 通过yml配置Gateway
+​	会对每一个请求分配一条线程，然后通过执行不同类型的过滤器来完成路由的功能，而当在等route类型的过滤器调用源服务器时，可能会因为源服务器执行较复杂的业务而响应特别慢，最终造成线程积压，导致性能变慢
+
+![image-20211008095219989](image-20211008095219989.png)
+
+Gateway的执行方式
+
+​	当请求到Gateway时，由Gateway的组件进行处理：
+
+​		1.创建一条线程，通过类似Zuul的过滤器拦截请求
+
+​		2.对源服务器转发请求，但是Gateway并不会等待请求调用源服务器的过程，而是将处理线程挂起，即可以不用再占用资源了
+
+​		3.等待源服务器返回消息后，再通过寻址的方式来响应之前客户端发送的请求
+
+![image-20211008100023664](image-20211008100023664.png)
+
+#### Gateway执行过程
+
+> - 路由（route）：路由网关是最基本的组件，由ID、目标URI、断言集合和过滤器集合共同组成，当断言判定为true时，才会匹配到路由
+> - 断言（predicate）：用来判定当前请求如何匹配路由，采用的是Java8断言
+> - 过滤器（filter）：在发送下游请求之前或之后修改请求和响应
+
+![](执行流程.png)
+
+<img src="06.png" alt="流程图" style="zoom: 33%;" />
+
+- ① Gateway 接收客户端请求。
+- ② 请求与 Predicate 进行匹配，获得到对应的 Route。匹配成功后，才能继续往下执行。
+- ③ 请求经过 Filter 过滤器链，执行前置（prev）处理逻辑（例如修改请求头信息等）
+- ④ 请求被 Proxy Filter 转发至目标 URI，并最终获得响应。
+- ⑤ 响应经过 Filter 过滤器链，执行后置（post）处理逻辑。
+- ⑥ Gateway 返回响应给客户端。
+
+#### 6.1 通过yml配置Gateway断言工厂
 
 ```yaml
 server:
@@ -612,6 +733,35 @@ eureka:
       defaultZone: http://eureka7001.com:7001/eureka/
 ```
 
+**通过Java代码使用RouteLocatorBuilder构造方法创建一个before的路由规则**
+
+```java
+/**
+ * 创建一个before的路由规则
+ * @param builder -- 路由构造器
+ * @return 路由规则
+ */
+@Bean
+public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+    ZonedDateTime datetime = LocalDateTime.now()//获取当前时间
+            // 两分钟后路由失效
+            .plusMinutes(2)
+            // 定义国际化区域
+            .atZone(ZoneId.systemDefault()); // 定义UTC时间 
+    return builder.routes()
+            // 匹配
+            .route("/user/**", r -> r.before(datetime) // 使用断言 
+            // 转发到具体的URI
+            .uri("http://localhost:6001"))
+            // 创建
+            .build();
+}
+```
+
+#### 断言工厂
+
+![](断言工厂.png)
+
 #### 6.2 通过定义全局自定义过滤器配置Gateway
 
 ```java
@@ -644,7 +794,6 @@ public class MyLogGatewayFilter implements GlobalFilter, Ordered {
         return 0;
     }
 }
-
 ```
 
 ### 7. Config
@@ -743,15 +892,71 @@ management:
         exclude : env
 ```
 
-通过访问ip:port/actuator/health监控config服务端的工作是否安全
+在 `health` 端点中，一定定义了四种`status`状态：
+
+- `UP` ：可用。
+- `DOWN` ：不可用。
+- `OUT_OF_SERVICE` ：暂不提供服务，一般是开发者主动设置。可以认为是一种“**特殊**”的不可用。
+- `UNKNOWN` ：未知状态。
+
+**通过访问ip:port/actuator/health监控config服务端的工作是否安全**
+
+查看详细信息需要将`management.endpoint.health.show-details`的值设置为`always`
+
+```json
+{
+    "status": "UP",
+    "details": {
+        "diskSpace": {
+            "status": "UP",
+            "details": {
+                "total": 250685575168,
+                "free": 172252426240,
+                "threshold": 10485760
+            }
+        },
+        "redis": {
+            "status": "UP",
+            "details": {
+                "version": "3.2.11"
+            }
+        }
+    }
+}
+```
 
 ip:port/actuator/configprops来查看Config服务端的相关配置
 
 ### 8. Zipkin全链路追踪
 
-> 随着业务的复杂，服务也会慢慢复杂起来，而每个服务又可以有多个实例，一旦发生问题将很难查找问题的根源，因此链路监控组件的诞生可以使得请求能够追踪到各个服务实例中。
+> ​    随着业务的复杂，服务也会慢慢复杂起来，而每个服务又可以有多个实例，一旦发生问题将很难查找问题的根源，因此链路监控组件的诞生可以使得请求能够追踪到各个服务实例中。
 
-使用方法：
+![](远程调用图.png)
+
+​										Dapper论文中的分布式调用示例图
+
+
+
+<img src="trace-id.jpg" alt="Trace Info propagation"  />
+
+​								SpringCloud Sleuth官网关于span和trace的说明图
+
+> - **span**: 基本单元。执行一次服务调用就生成一个span，用来记录当时的情况，以一个64位ID作为唯一表示。还包括一些摘要、时间戳事件、spanID等。
+>
+> - **trace**：代表一次请求会以一个64位ID作为唯一标识，通过ID标识多个span为同一个业务请求。以树状的形式展示服务调用。
+>
+> - **annotation**：注解，代表服务调用的客户端和服务端的行为，包括以下。
+>
+>   ​		`cs`（Client Sent）：客户端发起一个服务调用，意味着一个span的开始
+>   ​		`sr`（Server Received）：服务端获得请求信息，并开始处理。将sr减去cs得到的时间戳就是网络延迟时间
+>
+>   ​		`ss`（Server Sent）：服务端处理完请求将结果返回给客户端。将ss减去sr得到的时间戳就是服务端处理请求的时间
+>
+>   ​		`cr`（Client Received）：代表一个span的结束，客户端成功接收到服务端的回复，将cr减去cs得到的时间戳就是客户端从服务端获取响应的时间	
+
+
+
+##### 使用方法：
 
 1. 在主启动类上添加@EnableZipkinServer注解驱动Zipkin服务器
 
@@ -769,9 +974,15 @@ ip:port/actuator/configprops来查看Config服务端的相关配置
        base-url: http://localhost:5001
    ```
 
-通过访问ip:port/zipkin/进行查看服务
+
+
+通过访问localhost:5001/zipkin/进行搜索，查看具体的追踪信息：
+
+![image-20211008112142848](image-20211008112142848.png)
 
 ##### 通过Elasticsearch和kibana查看持久化的链路样本
+
+在yml中添加配置
 
 ```yaml
 ## zipkin配置
@@ -779,7 +990,7 @@ zipkin:
   storage:
 #    # mysql作为存储类型
 #    type: mysql
-    # 使用ElasticSearch作为存储类型
+    # 使用ElasticSearch作为存储类型，默认会将存储的数据保存至安装目录下的data中
     type: elasticsearch
     # ElasticSearch配置
     elasticsearch:
@@ -795,15 +1006,15 @@ zipkin:
       hosts: localhost:9200
 ```
 
-![image-20210914150042654](image-20210914150042654-16316030150941.png)
-
-> 当使用作者给的代码在console中运行时发现只有demolog之类的信息，通过百度后发现使用该命令即可查询
-
 ```http
 GET /zipkin*/_search
 ```
 
-### 9. 微服务监控——Admin
+### ![image-20210914150042654](image-20210914150042654-16316030150941.png)
+
+
+
+### 9. Admin监控
 
 > Admin是一个监控平台，它可以检测各个SpringBoot应用，让运维和开发人员及时发现各个服务实例存在的问题，主要通过Actuator暴露的端点来检测各个实例的运行状况
 
@@ -816,6 +1027,17 @@ spring:
   application:
     # 配置Spring服务名称
     name: admin-server
+# 在SpringBoot2.0以后的版本中，大部分的端点都被隐藏，因此这里暴露了所有端点
+management:
+  endpoints:
+    web:
+      exposure:
+      # 配置Actuator暴露那些端点
+        include: '*'
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:1001/eureka,http://localhost:1002/eureka
 ```
 
 #### 9.2 Admin客户端开发
@@ -842,3 +1064,6 @@ management:
 ```
 
 启动服务与客户端模块后通过在9001端口访问便可查看Admin服务端监测平台
+
+![image-20211008133917661](image-20211008133917661.png)
+
